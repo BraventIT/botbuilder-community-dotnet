@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Security;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Bot.Builder.Community.Adapters.Alexa.Directives;
@@ -291,7 +292,7 @@ namespace Bot.Builder.Community.Adapters.Alexa
                 if (response.Response.Directives.Count() > 0)
                 {
                     var directive = (DisplayDirective)response.Response.Directives.First();
-                    if (directive.Template.Type.Equals(nameof(DisplayRenderBodyTemplate1)))
+                    if (directive.Template.Type.Equals("BodyTemplate1"))
                     {
                         var renderBody = (DisplayRenderBodyTemplate1)directive.Template;
 
@@ -307,6 +308,24 @@ namespace Bot.Builder.Community.Adapters.Alexa
 
                         directive.Template = renderBody;
                         response.Response.Directives = new List<DisplayDirective> { directive }.ToArray();
+                    }
+                    else if (directive.Template.Type.Equals("BodyTemplate2"))
+                    {
+                        var renderBody = (DisplayRenderBodyTemplate2)directive.Template;
+                        if (!string.IsNullOrEmpty(renderBody.TextContent.PrimaryText.Text))
+                        {
+                            SetResponseSSML(ref response, renderBody.TextContent.PrimaryText.Text);
+                        }
+
+                        if (!string.IsNullOrEmpty(renderBody.TextContent.SecondaryText.Text))
+                        {
+                            SetResponseSSML(ref response, renderBody.TextContent.SecondaryText.Text);
+                        }
+
+                        if (!string.IsNullOrEmpty(renderBody.TextContent.TertiaryText.Text))
+                        {
+                            SetResponseSSML(ref response, renderBody.TextContent.TertiaryText.Text);
+                        }
                     }
                     else if (directive.Template.Type.Equals("ListTemplate2"))
                     {
@@ -586,6 +605,8 @@ namespace Bot.Builder.Community.Adapters.Alexa
         /// </summary>
         private static void SetResponseSSML(ref AlexaResponseBody response, string text)
         {
+            text = Regex.Replace(text, @"\<.*?\>", " ");
+
             response.Response.OutputSpeech.Ssml = string.IsNullOrEmpty(response.Response.OutputSpeech.Ssml)
                 ? text
                 : response.Response.OutputSpeech.Ssml;
