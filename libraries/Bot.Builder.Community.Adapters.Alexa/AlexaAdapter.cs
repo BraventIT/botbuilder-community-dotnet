@@ -29,6 +29,8 @@ namespace Bot.Builder.Community.Adapters.Alexa
 
         public string DirectivesBackgroundImageByDefault { get; set; }
 
+        public static string DirectivesBackgroundImageByDefaultNoStatic;
+
         public string TittleTextByDefault { get; set; }
 
         public AlexaAdapter()
@@ -196,6 +198,8 @@ namespace Bot.Builder.Community.Adapters.Alexa
             }
 
             #region ECA_Code
+
+            DirectivesBackgroundImageByDefaultNoStatic = this.DirectivesBackgroundImageByDefault;
 
             // Implement multiple parser of activities
             response.Response.OutputSpeech = new AlexaOutputSpeech { Text = string.Empty, Ssml = string.Empty };
@@ -459,7 +463,8 @@ namespace Bot.Builder.Community.Adapters.Alexa
                         {
                             SetResponseText(ref response, hc.Text);
                             SetResponseSSML(ref response, hc.Text);
-                            response.Response.Card = CreateAlexaCardFromHeroCard(attachment);
+                            //response.Response.Card = CreateAlexaCardFromHeroCard(attachment);
+                            context.AlexaResponseDirectives().AddRange(CreateAlexaCardFromHeroCard(attachment));
                         }
 
                         break;
@@ -479,8 +484,11 @@ namespace Bot.Builder.Community.Adapters.Alexa
             #endregion
         }
 
-        private static AlexaCard CreateAlexaCardFromHeroCard(Attachment attachment)
+        private static List<DisplayDirective> CreateAlexaCardFromHeroCard(Attachment attachment)
         {
+            // Change the automatic parse to card to Directive card with Image and without Image.
+            var directive = new DisplayDirective();
+
             if (!(attachment.Content is HeroCard heroCardContent))
             {
                 return null;
@@ -489,45 +497,65 @@ namespace Bot.Builder.Community.Adapters.Alexa
             AlexaCard alexaCard;
             if (heroCardContent.Images != null && heroCardContent.Images.Any())
             {
-                alexaCard = new AlexaCard()
+                var bodyTemplate1 = new DisplayRenderBodyTemplate2()
                 {
-                    Type = AlexaCardType.Standard,
-                    Image = new AlexaCardImage()
+                    Title = heroCardContent.Title,
+                    TextContent = new TextContent
                     {
-                        SmallImageUrl = heroCardContent.Images[0].Url,
-                        LargeImageUrl = heroCardContent.Images.Count > 1 ? heroCardContent.Images[1].Url : null
-                    }
+                        PrimaryText = string.IsNullOrEmpty(heroCardContent.Title) ? null
+                        : new InnerTextContent
+                        {
+                            Text = $"<font size=\"7\"><b>{heroCardContent.Title}</b></font>",
+                            Type = TextContentType.RichText
+                        },
+                        SecondaryText = string.IsNullOrEmpty(heroCardContent.Subtitle) ? null
+                        : new InnerTextContent
+                        {
+                            Text = $"<font size=\"3\">{heroCardContent.Subtitle}</font>",
+                            Type = TextContentType.RichText
+                        },
+                        TertiaryText = string.IsNullOrEmpty(heroCardContent.Text) ? null
+                        : new InnerTextContent
+                        {
+                            Text = $"<font size=\"2\"><br/><br/>{heroCardContent.Text}</font>",
+                            Type = TextContentType.RichText
+                        },
+                    },
+                    Image = new Image
+                    {
+                        Sources = new List<ImageSource> {new ImageSource
+                        {
+                            Url = heroCardContent.Images.FirstOrDefault()?.Url,
+                        },
+                    }.ToArray(),
+                    },
+                    BackgroundImage = new Image
+                    {
+                        Sources = new List<ImageSource>
+                    {
+                        new ImageSource
+                        {
+                            Url = DirectivesBackgroundImageByDefaultNoStatic
+                        }
+                    }.ToArray()
+                    },
                 };
 
-                if (heroCardContent.Title != null)
-                {
-                    alexaCard.Title = heroCardContent.Title;
-                }
-
-                if (heroCardContent.Text != null)
-                {
-                    // Because the content property is not accepting by Alexa.
-                    alexaCard.Text = heroCardContent.Text;
-                }
+                directive.Template = bodyTemplate1;
             }
             else
             {
-                alexaCard = new AlexaCard()
+                var bodyTemplate = new DisplayRenderBodyTemplate1()
                 {
-                    Type = AlexaCardType.Simple
+                    BackgroundImage = new Image { Sources = new List<ImageSource> { new ImageSource { Url = DirectivesBackgroundImageByDefaultNoStatic } }.ToArray() },
+                    Title = heroCardContent.Title,
+                    TextContent = new TextContent { PrimaryText = new InnerTextContent { Text = heroCardContent.Text, Type = TextContentType.PlainText } }
                 };
-                if (heroCardContent.Title != null)
-                {
-                    alexaCard.Title = heroCardContent.Title;
-                }
 
-                if (heroCardContent.Text != null)
-                {
-                    alexaCard.Content = heroCardContent.Text;
-                }
+                directive.Template = bodyTemplate;
             }
 
-            return alexaCard;
+            return new List<DisplayDirective> { directive };
         }
 
         public override Task<ResourceResponse> UpdateActivityAsync(ITurnContext turnContext, Activity activity, CancellationToken cancellationToken)
