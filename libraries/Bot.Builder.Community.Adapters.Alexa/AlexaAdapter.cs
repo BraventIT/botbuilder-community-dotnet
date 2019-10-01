@@ -179,6 +179,11 @@ namespace Bot.Builder.Community.Adapters.Alexa
                 }
             };
 
+            if (string.IsNullOrEmpty(context.GetAlexaRequestBody().Request.Type))
+            {
+                response.Response.ShouldEndSession = null;
+            }
+
             if (context.GetAlexaRequestBody().Request.Type == AlexaRequestTypes.SessionEndedRequest
                 && (activities == null || !activities.Any()))
             {

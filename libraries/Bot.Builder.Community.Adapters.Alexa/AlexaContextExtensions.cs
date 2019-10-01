@@ -12,6 +12,13 @@ namespace Bot.Builder.Community.Adapters.Alexa
 {
     public static class AlexaContextExtensions
     {
+        public static void AlexaSessionEndedRequest(this ITurnContext context, bool? SessionEndedRequest)
+        {
+            var alexaRequestBody = (AlexaRequestBody)context.Activity.ChannelData;
+            alexaRequestBody.Request.Type = SessionEndedRequest.ToString();
+            context.Activity.ChannelData = alexaRequestBody;
+        }
+
         public static Dictionary<string, string> AlexaSessionAttributes(this ITurnContext context)
         {
             return context.TurnState.Get<Dictionary<string, string>>("AlexaSessionAttributes");

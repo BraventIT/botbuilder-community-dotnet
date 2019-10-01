@@ -134,7 +134,7 @@ namespace Bot.Builder.Community.Adapters.Alexa
 
         public Reprompt Reprompt { get; set; }
 
-        public bool ShouldEndSession { get; set; }
+        public bool? ShouldEndSession { get; set; }
 
         public object[] Directives { get; set; }
     }
