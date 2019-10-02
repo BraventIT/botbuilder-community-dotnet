@@ -1,19 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Globalization;
-using System.Linq;
-using System.Security;
-using System.Threading;
-using System.Threading.Tasks;
-using Bot.Builder.Community.Adapters.Alexa.Directives;
-using Bot.Builder.Community.Adapters.Alexa.Integration;
-using Microsoft.Bot.Builder;
-using Microsoft.Bot.Schema;
-using Newtonsoft.Json;
-
-namespace Bot.Builder.Community.Adapters.Alexa
+﻿namespace Bot.Builder.Community.Adapters.Alexa
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Diagnostics;
+    using System.Globalization;
+    using System.Linq;
+    using System.Text.RegularExpressions;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using Bot.Builder.Community.Adapters.Alexa.Directives;
+    using Microsoft.Bot.Builder;
+    using Microsoft.Bot.Schema;
+    using Newtonsoft.Json;
+
     public class AlexaAdapter : BotAdapter
     {
         // Waiting time between messages
@@ -297,27 +296,52 @@ namespace Bot.Builder.Community.Adapters.Alexa
             else
             {
                 // if we have directives we add the text to them.
-                if (response.Response.Directives.Count() > 0)
+                if (response.Response.Directives.Any())
                 {
+                    // Get first Directive.
                     var directive = (DisplayDirective)response.Response.Directives.First();
-                    if (directive.Template.Type.Equals(nameof(DisplayRenderBodyTemplate1)))
+
+                    var bodyTemplate1 = new DisplayRenderBodyTemplate1();
+                    if (directive.Template.Type.Equals(bodyTemplate1.Type))
                     {
                         var renderBody = (DisplayRenderBodyTemplate1)directive.Template;
 
+                        if (string.IsNullOrEmpty(renderBody.Title))
+                        {
+                            renderBody.Title = this.TittleTextByDefault;
+                        }
+
                         // we always try to added at TertiaryText If it've text we added a '\n' and next the text.
-                        if (renderBody.TextContent.TertiaryText != null)
+                        if (renderBody.TextContent.PrimaryText != null)
                         {
-                            SetResponseText(ref response, renderBody.TextContent.TertiaryText.Text);
+                            SetResponseSSML(ref response, renderBody.TextContent.PrimaryText.Text);
                         }
-                        else
-                        {
-                            renderBody.TextContent.TertiaryText = new InnerTextContent { Text = response.Response.OutputSpeech.Text };
-                        }
+
+                        renderBody.TextContent.PrimaryText = new InnerTextContent { Text = response.Response.OutputSpeech.Text };
 
                         directive.Template = renderBody;
                         response.Response.Directives = new List<DisplayDirective> { directive }.ToArray();
                     }
-                    else if (directive.Template.Type.Equals("ListTemplate2"))
+
+                    var bodyTemplate2 = new DisplayRenderBodyTemplate2();
+                    if (directive.Template.Type.Equals(bodyTemplate2.Type))
+                    {
+                        var renderBody = (DisplayRenderBodyTemplate2)directive.Template;
+
+                        if (string.IsNullOrEmpty(renderBody.Title))
+                        {
+                            renderBody.Title = this.TittleTextByDefault;
+                        }
+
+                        // we always try to added at TertiaryText If it've text we added a '\n' and next the text.
+                        if (renderBody.TextContent.TertiaryText != null)
+                        {
+                            SetResponseSSML(ref response, renderBody.TextContent.TertiaryText.Text);
+                        }
+                    }
+
+                    var bodyTemplateList2 = new DisplayRenderListTemplate2();
+                    if (directive.Template.Type.Equals(bodyTemplateList2.Type))
                     {
                         var renderBody = (DisplayRenderListTemplate2)directive.Template;
 
@@ -330,7 +354,7 @@ namespace Bot.Builder.Community.Adapters.Alexa
                         // Add a default backfround if dont exist one
                         if (renderBody.BackgroundImage == null || renderBody.BackgroundImage.Sources.Count() < 0)
                         {
-                            if (!string.IsNullOrEmpty(DirectivesBackgroundImageByDefault))
+                            if (!string.IsNullOrEmpty(this.DirectivesBackgroundImageByDefault))
                             {
                                 renderBody.BackgroundImage = new Image
                                 {
@@ -338,7 +362,7 @@ namespace Bot.Builder.Community.Adapters.Alexa
                                     {
                                         new ImageSource
                                         {
-                                            Url = DirectivesBackgroundImageByDefault
+                                            Url = this.DirectivesBackgroundImageByDefault
                                         }
                                     }.ToArray()
                                 };
@@ -619,6 +643,8 @@ namespace Bot.Builder.Community.Adapters.Alexa
         /// </summary>
         private static void SetResponseSSML(ref AlexaResponseBody response, string text)
         {
+            text = Regex.Replace(text, @"<[^>]*>", string.Empty);
+
             response.Response.OutputSpeech.Ssml = string.IsNullOrEmpty(response.Response.OutputSpeech.Ssml)
                 ? text
                 : response.Response.OutputSpeech.Ssml;
