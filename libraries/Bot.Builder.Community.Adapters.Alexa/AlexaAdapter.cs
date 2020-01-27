@@ -595,35 +595,38 @@
             var listItems = new List<ListItem>();
             foreach (var hc in (List<HeroCard>)attachment.Content)
             {
-                listItems.Add(new ListItem
+                if (!(hc.Title == "DELETE"))
                 {
-                    Token = hc.Title,
-                    Image = new Image
+                    listItems.Add(new ListItem
                     {
-                        Sources = new List<ImageSource>
+                        Token = hc.Title,
+                        Image = new Image
+                        {
+                            Sources = new List<ImageSource>
                                {
                                    new ImageSource
                                    {
                                        Url = hc.Images.First().Url
                                    }
                                }.ToArray()
-                    },
-                    TextContent = new TextContent
-                    {
-                        PrimaryText = new InnerTextContent
-                        {
-                            Text = hc.Title,
                         },
-                        SecondaryText = new InnerTextContent
+                        TextContent = new TextContent
                         {
-                            Text = hc.Subtitle
+                            PrimaryText = new InnerTextContent
+                            {
+                                Text = hc.Title,
+                            },
+                            SecondaryText = new InnerTextContent
+                            {
+                                Text = hc.Subtitle
+                            },
+                            TertiaryText = new InnerTextContent
+                            {
+                                Text = hc.Text
+                            }
                         },
-                        TertiaryText = new InnerTextContent
-                        {
-                            Text = hc.Text
-                        }
-                    },
-                });
+                    });
+                }
             }
 
             var directive = new DisplayDirective()
